@@ -1,3 +1,19 @@
+/*
+ * Copyright 2010 Maximilian Herkender
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.littlecoder.utils
 {
     public class JSONDecoder
@@ -21,23 +37,23 @@ package com.littlecoder.utils
          * @see http://json.org/
          */
         public static const decoder:Function = initDecodeJson();
-    
-    
+
+
     import flash.system.ApplicationDomain;
     import flash.utils.ByteArray;
-    
+
     public static function initDecodeJson():Function {
         var position:uint;
         var byteInput:ByteArray;
         var char:uint;
-        
+
         var nativeJson:Object;
         try {
             nativeJson = ApplicationDomain.currentDomain.getDefinition("JSON");
         } catch (e:ReferenceError) {
             // ignore
         }
-        
+
         const charConvert:ByteArray = new ByteArray();
         charConvert.length = 0x100;// fill w/ 0's
         charConvert[0x22] = 0x22;// \" -> "
@@ -48,7 +64,7 @@ package com.littlecoder.utils
         charConvert[0x6e] = 0xa;// \n -> newline
         charConvert[0x72] = 0xd;// \r -> carriage return
         charConvert[0x74] = 0x9;// \t -> horizontal tab
-        
+
         const isNumberChar:ByteArray = new ByteArray();
         isNumberChar.length = 0x100;// fill w/ 0's
         isNumberChar[0x2b] = 1;// +
@@ -66,7 +82,7 @@ package com.littlecoder.utils
         isNumberChar[0x39] = 1;// 9
         isNumberChar[0x45] = 1;// E
         isNumberChar[0x65] = 1;// e
-        
+
         // this is a trick to speed up the string parsing loop
         // 1 means go, 0 means stop
         const stringHelper:ByteArray = new ByteArray();
@@ -77,14 +93,14 @@ package com.littlecoder.utils
         }
         stringHelper[0x22] = 0;// "
         stringHelper[0x5c] = 0;// \
-        
+
         const isWhitespace:ByteArray = new ByteArray();
         isWhitespace.length = 0x100;// fill w/ 0's
         isWhitespace[0x9] = 1;// \t
         isWhitespace[0xa] = 1;// \n
         isWhitespace[0xd] = 1;// \r
         isWhitespace[0x20] = 1;// " "
-        
+
         const parseNumber:Function = function():Number {
             if (position === 1) {
                 byteInput.position = 0;
@@ -95,14 +111,14 @@ package com.littlecoder.utils
                 return Number(byteInput.readUTFBytes(position-- - byteInput.position - 1));
             }
         };
-        
+
         const parseWhitespace:Function = function():Object {
             while (isWhitespace[byteInput[position]]) {
                 position++;
             }
             return parse[byteInput[position++]]();
         };
-        
+
         const parseStringEscaped:Function = function(result:String):String {
             do {
                 // which special character is it?
@@ -117,32 +133,32 @@ package com.littlecoder.utils
                 } else {
                     byteInput.position = position;
                 }
-                
+
                 // write special character to result
                 result += String.fromCharCode(char);
-                
+
                 while (stringHelper[byteInput[position++]]) {}
-                
+
                 // flush the buffered data to the result
                 if ((position - 1) > byteInput.position) {
                     result += byteInput.readUTFBytes((position - 1) - byteInput.position);
                 }
             } while (byteInput[position - 1] === 0x5c);// == /
-            
+
             return result;
         }
-        
+
         // parse is a mapping of the first character of what's being parsed, to the
         // function that parses it
         const parse:Object = {
             0x22: function ():String {// "
                 if (stringHelper[byteInput[position++]]) {
                     byteInput.position = position - 1;
-                    
+
                     // this tight loop is intended for simple strings, parseStringEscaped
                     // will handle the more advanced cases
                     while (stringHelper[byteInput[position++]]) {}
-                    
+
                     if (byteInput[position - 1] === 0x5c) {// == \
                         return parseStringEscaped(
                             byteInput.readUTFBytes((position - 1) - byteInput.position));
@@ -162,7 +178,7 @@ package com.littlecoder.utils
                     position++;
                     return {};
                 }
-                
+
                 var result:Object = {}, key:String;
                 do {
                     do {
@@ -199,7 +215,7 @@ package com.littlecoder.utils
                     position++;
                     return [];
                 }
-                
+
                 var result:Array = [];
                 do {
                     do {
@@ -271,7 +287,7 @@ package com.littlecoder.utils
             0x9: parseWhitespace,// \t
             0x20: parseWhitespace// " "
         };
-        
+
         return function (input:*, allowNativeJson:Boolean = false):Object {
             // prepare the input
             if (input is String) {
@@ -286,9 +302,9 @@ package com.littlecoder.utils
             } else {
                 throw new Error("Unexpected input <" + input + ">");
             }
-            
+
             position = 0;
-            
+
             try {
                 return parse[byteInput[position++]]();
             } catch (e:TypeError) {
